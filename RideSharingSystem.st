@@ -1,108 +1,252 @@
-"Ride Class (Base Class)"
-Object subclass: Ride [
-    | rideID pickupLocation dropoffLocation distance fare |
+"==================== RIDE CLASSES ===================="
 
-    Ride class >> newRideID: anID pickupLocation: pickup dropoffLocation: dropoff distance: aDistance [
-        ^self new initializeWithID: anID pickupLocation: pickup dropoffLocation: dropoff distance: aDistance.
-    ]
+Object subclass: #Ride
+    instanceVariableNames: 'rideID pickupLocation dropoffLocation distance fare'
+    classVariableNames: ''
+    poolDictionaries: ''
+    category: 'RideSharingSystem'.
 
-    Ride >> initializeWithID: anID pickupLocation: pickup dropoffLocation: dropoff distance: aDistance [
-        rideID := anID.
-        pickupLocation := pickup.
-        dropoffLocation := dropoff.
-        distance := aDistance.
-        fare := 0.0.
-    ]
+!Ride class methodsFor: 'instance creation'!
+newId: anId pickup: pick dropoff: drop distance: dist
+    ^ self new initializeId: anId pickup: pick dropoff: drop distance: dist
+!!
 
-    Ride >> fare [
-        fare := distance * 1.5. "Standard fare calculation"
-        ^fare.
-    ]
+!Ride methodsFor: 'initialization'!
+initializeId: anId pickup: pick dropoff: drop distance: dist
+    rideID := anId.
+    pickupLocation := pick.
+    dropoffLocation := drop.
+    distance := dist.
+    fare := 0.
+!!
 
-    Ride >> rideDetails [
-        ^'Ride ID: ', rideID printString, ', Pickup Location: ', pickupLocation, ', Dropoff Location: ', dropoffLocation.
-    ]
-]
+!Ride methodsFor: 'operations'!
+calculateFare
+    fare := distance * 1.5.
+    ^ fare
+!!
 
-"StandardRide Subclass"
-Ride subclass: StandardRide [
-    StandardRide >> fare [
-        fare := distance * 1.5. "Standard ride fare"
-        ^fare.
-    ]
-]
+!Ride methodsFor: 'printing'!
+formatNumber: aNumber
+    | rounded intPart fracPart fracStr |
+    rounded := (aNumber * 100) rounded / 100.
+    intPart := rounded truncated.
+    fracPart := ((rounded - intPart) * 100) rounded.
+    fracStr := fracPart printString.
+    fracPart < 10 ifTrue: [fracStr := '0', fracStr].
+    ^ intPart printString, '.', fracStr
+!
 
-"PremiumRide Subclass"
-Ride subclass: PremiumRide [
-    PremiumRide >> fare [
-        fare := distance * 2.0. "Premium ride fare (higher per mile)"
-        ^fare.
-    ]
-]
+rideDetails
+    | fareString |
+    fareString := self formatNumber: self calculateFare.
+    Transcript show: 'Ride ID: '; show: rideID printString;
+        show: ' | From: '; show: pickupLocation;
+        show: ' -> '; show: dropoffLocation;
+        show: ' | Distance: '; show: distance printString;
+        show: ' miles | Fare: $'; show: fareString; nl.
+!!
 
-"Driver Class"
-Object subclass: Driver [
-    | driverID name rating assignedRides |
+Ride subclass: #StandardRide
+    instanceVariableNames: ''
+    classVariableNames: ''
+    poolDictionaries: ''
+    category: 'RideSharingSystem'.
 
-    Driver class >> newDriverID: anID name: aName rating: aRating [
-        ^self new initializeWithID: anID name: aName rating: aRating.
-    ]
+!StandardRide methodsFor: 'operations'!
+calculateFare
+    fare := distance * 1.5.
+    ^ fare
+!!
 
-    Driver >> initializeWithID: anID name: aName rating: aRating [
-        driverID := anID.
-        name := aName.
-        rating := aRating.
-        assignedRides := OrderedCollection new.
-    ]
+Ride subclass: #PremiumRide
+    instanceVariableNames: ''
+    classVariableNames: ''
+    poolDictionaries: ''
+    category: 'RideSharingSystem'.
 
-    Driver >> addRide: aRide [
-        assignedRides add: aRide.
-    ]
+!PremiumRide methodsFor: 'operations'!
+calculateFare
+    fare := distance * 2.0.
+    ^ fare
+!!
 
-    Driver >> getDriverInfo [
-        ^'Driver: ', name, ', Rating: ', rating printString.
-    ]
-]
+Ride subclass: #SharedRide
+    instanceVariableNames: 'coRiders'
+    classVariableNames: ''
+    poolDictionaries: ''
+    category: 'RideSharingSystem'.
 
-"Rider Class"
-Object subclass: Rider [
-    | riderID name requestedRides |
+!SharedRide class methodsFor: 'instance creation'!
+newId: anId pickup: pick dropoff: drop distance: dist riders: riderNames
+    ^ self new initializeId: anId pickup: pick dropoff: drop distance: dist riders: riderNames
+!!
 
-    Rider class >> newRiderID: anID name: aName [
-        ^self new initializeWithID: anID name: aName.
-    ]
+!SharedRide methodsFor: 'initialization'!
+initializeId: anId pickup: pick dropoff: drop distance: dist riders: riderNames
+    super initializeId: anId pickup: pick dropoff: drop distance: dist.
+    coRiders := OrderedCollection new.
+    riderNames isNil ifFalse: [coRiders addAll: riderNames].
+    coRiders isEmpty ifTrue: [coRiders add: 'Unknown Rider'].
+!!
 
-    Rider >> initializeWithID: anID name: aName [
-        riderID := anID.
-        name := aName.
-        requestedRides := OrderedCollection new.
-    ]
+!SharedRide methodsFor: 'operations'!
+calculateFare
+    | totalFare |
+    totalFare := distance * 1.8.
+    fare := totalFare / coRiders size.
+    ^ fare
+!!
 
-    Rider >> requestRide: aRide [
-        requestedRides add: aRide.
-    ]
+!SharedRide methodsFor: 'printing'!
+rideDetails
+    | riderListString fareString |
+    riderListString := coRiders inject: '' into: [:acc :r | acc isEmpty ifTrue: [r] ifFalse: [acc, ', ', r]].
+    fareString := self formatNumber: self calculateFare.
 
-    Rider >> viewRides [
-        requestedRides do: [:ride |
-            FileStream stdout nextLine; nextPutAll: ride rideDetails; flush.
+    Transcript show: 'Shared Ride ID: '; show: rideID printString;
+        show: ' | Riders: '; show: riderListString;
+        show: ' | From: '; show: pickupLocation;
+        show: ' -> '; show: dropoffLocation;
+        show: ' | Distance: '; show: distance printString;
+        show: ' miles | Each Pays: $'; show: fareString; nl.
+!!
+
+"==================== DRIVER CLASS ===================="
+
+Object subclass: #Driver
+    instanceVariableNames: 'driverID name rating assignedRides'
+    classVariableNames: ''
+    poolDictionaries: ''
+    category: 'RideSharingSystem'.
+
+!Driver class methodsFor: 'instance creation'!
+newId: anId name: n rating: r
+    ^ self new initializeId: anId name: n rating: r
+!!
+
+!Driver methodsFor: 'initialization'!
+initializeId: anId name: n rating: r
+    driverID := anId.
+    name := n.
+    rating := r.
+    assignedRides := OrderedCollection new.
+!!
+
+!Driver methodsFor: 'operations'!
+addRide: aRide
+    assignedRides add: aRide.
+!!
+
+!Driver methodsFor: 'printing'!
+formatNumber: aNumber
+    | rounded intPart fracPart fracStr |
+    rounded := (aNumber * 100) rounded / 100.
+    intPart := rounded truncated.
+    fracPart := ((rounded - intPart) * 100) rounded.
+    fracStr := fracPart printString.
+    fracPart < 10 ifTrue: [fracStr := '0', fracStr].
+    ^ intPart printString, '.', fracStr
+!
+
+getDriverInfo
+    | ratingString |
+    ratingString := self formatNumber: rating.
+    Transcript show: 'Driver: '; show: name;
+        show: ' | Rating: '; show: ratingString;
+        show: ' | Total Rides: '; show: assignedRides size printString; nl.
+!!
+
+"==================== RIDER CLASS ===================="
+
+Object subclass: #Rider
+    instanceVariableNames: 'riderID name requestedRides'
+    classVariableNames: ''
+    poolDictionaries: ''
+    category: 'RideSharingSystem'.
+
+!Rider class methodsFor: 'instance creation'!
+newId: anId name: n
+    ^ self new initializeId: anId name: n
+!!
+
+!Rider methodsFor: 'initialization'!
+initializeId: anId name: n
+    riderID := anId.
+    name := n.
+    requestedRides := OrderedCollection new.
+!!
+
+!Rider methodsFor: 'operations'!
+requestRide: aRide
+    requestedRides add: aRide.
+!!
+
+!Rider methodsFor: 'printing'!
+viewRides
+    Transcript show: 'Ride History for '; show: name; show: ':'; nl.
+    requestedRides do: [:r | r rideDetails].
+!!
+
+"==================== MAIN EXECUTION ===================="
+
+| driver rider rides numRides |
+
+Transcript show: '=== Welcome to Anjal''s Ride Sharing System ==='; nl; nl.
+
+driver := Driver newId: 1 name: 'Alex' rating: 4.8.
+rider := Rider newId: 1 name: 'Sam'.
+rides := OrderedCollection new.
+
+Transcript show: 'How many rides to create? '; flush.
+numRides := stdin nextLine asInteger.
+
+1 to: numRides do: [:i |
+    | id pickup dropoff distance rideType ride |
+    
+    Transcript nl; show: '--- Ride #', i printString, ' ---'; nl.
+    id := 100 + i - 1.
+    
+    Transcript show: 'Pickup: '; flush.
+    pickup := stdin nextLine.
+    
+    Transcript show: 'Dropoff: '; flush.
+    dropoff := stdin nextLine.
+    
+    Transcript show: 'Distance (miles): '; flush.
+    distance := stdin nextLine asNumber.
+    
+    Transcript show: 'Ride Type (standard/premium/shared): '; flush.
+    rideType := stdin nextLine.
+    
+    (rideType = 'premium') ifTrue: [
+        ride := PremiumRide newId: id pickup: pickup dropoff: dropoff distance: distance.
+    ] ifFalse: [
+        (rideType = 'shared') ifTrue: [
+            | numPassengers names |
+            Transcript show: 'Number of riders sharing: '; flush.
+            numPassengers := stdin nextLine asInteger.
+            
+            names := OrderedCollection new.
+            1 to: numPassengers do: [:j |
+                | passengerName |
+                Transcript show: 'Enter Rider ', j printString, ' name: '; flush.
+                passengerName := stdin nextLine.
+                names add: passengerName.
+            ].
+            ride := SharedRide newId: id pickup: pickup dropoff: dropoff distance: distance riders: names.
+        ] ifFalse: [
+            ride := StandardRide newId: id pickup: pickup dropoff: dropoff distance: distance.
         ].
-    ]
-]
+    ].
+    
+    rides add: ride.
+    driver addRide: ride.
+    rider requestRide: ride.
+].
 
-"Main"
-| ride1 ride2 driver rider |
-ride1 := StandardRide newRideID: 1 pickupLocation: 'A' dropoffLocation: 'B' distance: 10.
-ride2 := PremiumRide newRideID: 2 pickupLocation: 'C' dropoffLocation: 'D' distance: 15.
-driver := Driver newDriverID: 101 name: 'John Doe' rating: 4.
-rider := Rider newRiderID: 202 name: 'Alice Smith'.
-
-driver addRide: ride1.
-driver addRide: ride2.
-
-rider requestRide: ride1.
-rider requestRide: ride2.
-
+Transcript nl; show: '=== SYSTEM SUMMARY ==='; nl.
+driver getDriverInfo.
 rider viewRides.
-"Expected Output"
-"Ride ID: 1, Pickup Location: A, Dropoff Location: B"
-"Ride ID: 2, Pickup Location: C, Dropoff Location: D"
+
+Transcript nl; show: 'Thank you for using the Ride Sharing System!'; nl.
